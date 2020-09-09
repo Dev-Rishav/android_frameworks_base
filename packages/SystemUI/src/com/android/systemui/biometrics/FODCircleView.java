@@ -76,7 +76,6 @@ import java.util.TimerTask;
 
 public class FODCircleView extends ImageView implements ConfigurationListener,
             Handler.Callback, TunerService.Tunable   {
-    private final String SCREEN_BRIGHTNESS = "system:" + Settings.System.SCREEN_BRIGHTNESS;
     private final int MSG_HBM_OFF = 1001;
     private final int MSG_HBM_ON = 1002;
 
@@ -98,7 +97,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
 
     private Bitmap mIconBitmap;
 
-    private int mCurDim;
     private int mDreamingOffsetY;
     private int mCurrentBrightness;
     private int mHbmOffDelay;
@@ -119,8 +117,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
     private boolean mIsAuthenticated;
     private boolean mUseWallpaperColor;
 
-    private float mCurrentDimAmount = 0.0f;
-
     private Handler mHandler;
 
     private PowerManager mPowerManager;
@@ -138,7 +134,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
 
     private int mSelectedIcon;
     private TypedArray mIconStyles;
-    private boolean mBrightIcon;
 
     private int mPressedIcon;
     private final int[] PRESSED_STYLES = {
@@ -351,9 +346,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
                     Settings.System.FOD_ANIM),
                     false, this, UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.FOD_BRIGHT_ICON),
-                    false, this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.FOD_ANIM_KEYGUARD),
                     false, this, UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
@@ -373,9 +365,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
                     Settings.System.FOD_ANIM))) {
                 updateStyle();
             } else if (uri.equals(Settings.System.getUriFor(
-                    Settings.System.FOD_BRIGHT_ICON))) {
-                updateStyle();
-            } else if (uri.equals(Settings.System.getUriFor(
                     Settings.System.FOD_PRESSED_STATE))) {
                 updatepressedState();
             } else if (uri.equals(Settings.System.getUriFor(
@@ -389,12 +378,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
             useWallpaperColor(); 
             updatepressedState();
         }
-    }
-
-    @Override
-    public void onTuningChanged(String key, String newValue) {
-        mCurrentBrightness = newValue != null ? Integer.parseInt(newValue) : 0;
-        setDim(true);
     }
 
     public void updatepressedState() {
@@ -547,8 +530,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
         setKeepScreenOn(true);
 
         if (!mSupportsAlwaysOnHbm) {
-            setDim(true);
-        } else {
             dispatchPress();
             setColorFilter(Color.argb(0, 0, 0, 0), 
                      PorterDuff.Mode.SRC_ATOP);
@@ -571,10 +552,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
         if (!mSupportsAlwaysOnHbm) {
             setDim(false);
         } else {
-            if (mBrightIcon) {
-                setColorFilter(Color.argb(0, 0, 0, 0),
-                   PorterDuff.Mode.SRC_ATOP); 
-            } else {
                 setColorFilter(Color.argb(mCurDim, 0, 0, 0),
                    PorterDuff.Mode.SRC_ATOP); 
             }
@@ -656,8 +633,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
         updatePosition();
         dispatchShow();
         if (mSupportsAlwaysOnHbm) {
-            Dependency.get(TunerService.class).addTunable(this, SCREEN_BRIGHTNESS);
-            setDim(true);
             mHandler.sendEmptyMessageDelayed(MSG_HBM_ON, mHbmOnDelay);
         }
         setVisibility(View.VISIBLE);
@@ -676,8 +651,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
             if (mHandler.hasMessages(MSG_HBM_ON)) {
                 mHandler.removeMessages(MSG_HBM_ON);
             }
-            setDim(false);
-            Dependency.get(TunerService.class).removeTunable(this);
         }
         setVisibility(View.GONE);
         hideCircle();
@@ -697,8 +670,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
                 Settings.System.FOD_RECOGNIZING_ANIMATION, 0) != 0;
         mSelectedIcon = Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.FOD_ICON, 3);
-        mBrightIcon = Settings.System.getInt(mContext.getContentResolver(),
-                Settings.System.FOD_BRIGHT_ICON, 0) == 1;
         if (mFODAnimation != null) {
             mFODAnimation.update();
         }
@@ -798,9 +769,6 @@ public class FODCircleView extends ImageView implements ConfigurationListener,
             }
             if (mSupportsAlwaysOnHbm) {
                 mCurDim = dimAmount;
-                if (mBrightIcon) {
-                    setColorFilter(Color.argb(0, 0, 0, 0), 
-                        PorterDuff.Mode.SRC_ATOP);
                 } else {
                     setColorFilter(Color.argb(dimAmount, 0, 0, 0), 
                         PorterDuff.Mode.SRC_ATOP);
